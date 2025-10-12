@@ -83,11 +83,129 @@
       \item When jobs wake up, their \texttt{vruntime} is set to the minimum value in the tree.
       
 \end{itemize}
-\textbf{The Linux Completely Fair Scheduler (CFS):}
 
+\cheatsheetsection{Virtualiziang Memory}
 
-\cheatsheetsection{Multi-level Paging}
-A 2-level paging example:
+\textbf{Transparency:} Process is unaware of sharing
+
+\textbf{Static Allocation:} Randomlyewrites each program as it is loaded and placed in memory
+\begin{itemize}
+      \item No Protection
+      \item Cannot move addresses space after it has been placed.
+\end{itemize}
+
+\textbf{Dynamic Allocation:} Allocates memory at run-time
+\begin{itemize}
+      \item Requires hardware support (Memory Management Unit)
+      \item MMU dynamically changes process address at every memory reference
+\end{itemize}
+
+\textbf{Sparse Allocation:} Allocates memory in chunks, only allocate physical memory when needed.
+
+\textbf{Base+Bounds:}
+\begin{itemize}
+      \item MMU compares logical address to bounds register.
+      \item If logical address is out of bounds, raise an error.
+      \item Otherwise, add base register to logical address to get physical address.
+      \item OS sets registers when loading process.
+      \item Process can be moved by updating its base register.
+\end{itemize}
+
+\textbf{Running Process with Base+Bounds:}
+\begin{itemize}
+      \item OS: allocate memory in process table, alloc memory for process, set base and bounds registers, then return from trap.
+      \item Hardware: Restore registers, move to user mode, jump to process's \textbf{PC} (stores the next instruction address).
+      \item Process A: fetch instruction
+      \item Hardware: translate VA, perform fetch.
+      \item Process A: execute instruction.
+      \item Hardware: if explicit load/store, ensure address is legal and translate the VA.
+\end{itemize}
+
+\textbf{Segmentation:} Divide the address space into segments (Code, Stack, Heap), each segment has separate base+bounds registers and grows independently.
+\begin{itemize}
+      \item Explicit Approach: top bits of address select the segment, remaining are the offset.
+      \item Implicit Approach: entire logical address is the offset, the corresponding segment is determined by how logical address is formed:
+      \begin{itemize}
+            \item Formed from PC (Program Counter): code segment.
+            \item Formed from SP (Stack Pointer): stack segment.
+            \item Anything else: heap segment.
+      \end{itemize}
+\end{itemize}
+
+\begin{center}
+\begin{tabular}{ccccc} 
+      Segment & Base & Size & GrowsPositive? & Protection \\
+      \hline 
+      00 & 32 K & 2 K & 1 & R-X \\
+      01 & 34 K & 3 K & 1 & R-W \\
+      11 & 28 K & 2 K & 0 & R-W
+\end{tabular}
+\captionof{table}{Segment Register}
+\end{center}
+
+\cheatsheetsection{Paging} Divide virtual and physical memory into fixed-size pages Map virtual pages to physical pages with a page table
+
+% \textbf{Terminologies:}
+% \begin{itemize}
+%       \item \textbf{VPN:} Virtual Page Number
+%       \item \textbf{PFN:} Physical frame Number
+%       \item \textbf{PTE:} Page Table Entry
+%       \item \textbf{PDE:} Page Directory Entry
+%       \item \textbf{TLB:} Translation Lookaside Buffer
+% \end{itemize}
+
+\textbf{TLB Contents}
+\begin{itemize}
+      \item \textbf{VPN:} used for lookup
+      \item \textbf{PFN:} change the Virtual address VPN to PFN
+      \item \textbf{G:} global bit (shared by all processes, don't check ASID)
+      \item \textbf{ASID:} Address Space Identifier (which process's Page Table)
+      \item \textbf{D:} dirty bit (changed when page has been written to)
+      \item \textbf{V:} valid bit (valid translation present in entry)
+\end{itemize}
+
+% \textbf{Virtual Memory Mechanisms}
+% First, hardware checks TLB for virtual address
+% \begin{itemize}
+%       \item If TLB hit, address translation done; page in physical memory
+% \end{itemize}
+
+% Else
+% \begin{itemize}
+%       \item Hardware or OS checks page table in memory
+%       \item If PTE designates present, page in physical memory
+% \end{itemize}
+
+% Else
+% \begin{itemize}
+%       \item Trap into OS:
+%       \item OS selects victim page in memory to replace
+%       \item Writes victim page out to disk if modified (dirty bit is set)
+%       \item OS reads referenced page from disk into memory
+%       \item Page Table is updated, present bit is set
+% - Process continues execution
+% \end{itemize}
+
+\textbf{Sapping Policy:}
+\begin{itemize}
+      \item \textbf{OPT:} Evict the page that will not be used for the longest time.
+      \item \textbf{LRU:} Evict the page that has not been used for the longest time.
+      \item \textbf{Random:} Randomly select a page to replace.
+\end{itemize}
+
+\newpage
+
+\textbf{Clock Algorithm:} Approximating LRU
+\begin{itemize}
+      \item Add use bit to PTE, whenever page is referenced, bit set to 1
+      \item Imagine all the pages of the system arranged in a circular list
+      \item A clock hand points to some particular page, P
+      \item When replacement needs to happen, OS checks use bit of page P
+      \item if 1 , (not good candidate) set use bit to 0 and advance P , keep looking
+      \item if 0 , (good candidate) replace this page
+\end{itemize}
+
+\textbf{2-level Multi-level Paging Example:}
 \begin{lstlisting}
       VA = 0x0214  (15 bits -> 5|5|5)
       +-------------+------------+----------+
@@ -104,13 +222,42 @@ PDBR=13  -->  Physical Page #13 (Page Directory)
              |  Offset 0x14
              v
     Physical Address = (0x0E<<5) | 0x14 = 0x1D4
-
 \end{lstlisting}
 
+\textbf{VAX/VMS Virtual Memory Layout:}
+\begin{itemize}
+      \item Page 0 invalid
+      \item Segmentation: P0, P1, S
+      \begin{itemize}
+            \item P0, P1: User segments
+            \item S: System segments(Kernel)
+      \end{itemize}
+      \item Context Switch changes P0 \& P1 PT Registers
+\end{itemize}
+
+\textbf{Segmented FIFO}
+\begin{itemize}
+      \item RSS (Referenced Set Size): the maximum number of pages in memory for each process
+      \item FIFO: first-in pages are moved to two \textbf{global} second-chance lists before actual eviction:
+      \begin{itemize}
+            \item Clean-Page Free List
+            \item Dirty-Page List
+      \end{itemize}
+      \item If another process needs free page, take first page off clean list
+      \item If original process needs page before actual eviction, reclaims it from list.
+      \item As the global list grow, it performs similar to LRU.
+      \item Uses Clustering of pages from dirty list to write to disk.
+\end{itemize}
+
+\textbf{Lazy Optmization: Demand Zeroing}: To prevent process read sensitive data from previous process, the OS first mark PTE invalid. Only on page fault (the process trying to use the page), the OS will zero the page.
+
+\textbf{Copy-On-Write:} Share physical page across different processes. If one is writing, then copy the page and write to the new page.
+
+\textbf{ASLR: Address Space Layout Randomization}: Randomize the address space layout of the process to avoid buffer overflow attacks.
 
 \vfill
 
-\cheatsheetfooter{Innovative Innovation}{https://github.com/innovativeinnovation}
+% \cheatsheetfooter{Innovative Innovation}{https://github.com/innovativeinnovation}
 
 \end{multicols*}
 

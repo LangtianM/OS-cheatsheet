@@ -49,6 +49,7 @@
 
 \RequirePackage{tabularx}
 \RequirePackage{booktabs}
+\RequirePackage{caption}
 
 %------------------------------------------------------------------------------
 % Colors
