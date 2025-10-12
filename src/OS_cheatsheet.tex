@@ -29,7 +29,7 @@
       \item Hardware: generates timer interrupt, save \texttt{regs(A)} to kernel stack, move to kernel mode and jump to trap handler
       \item OS: Handle the trap, call \texttt{switch} routine, save \texttt{regs(A)} $\rightarrow$ \texttt{proc\_t(A)}, restore \texttt{regs(B)} $\leftarrow$ \texttt{proc\_t(B)}, switch to \texttt{k-stack(B)}, return-from-trap (into B)
       \item Hardware: restore \texttt{regs(B)} from kernel stack, move to user mode and jump to process B
-      \item Process B executes
+      \item Process B executes.
 \end{itemize}
 
 \cheatsheetsection{CPU Scheduling}
