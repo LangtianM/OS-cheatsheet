@@ -1,4 +1,4 @@
-\documentclass[9pt]{innovativeinnovation-cheatsheet}
+\documentclass[8pt]{innovativeinnovation-cheatsheet}
 
 \cheatsheettitle{Example Cheat Sheet}
 
@@ -6,126 +6,107 @@
 
 \begin{multicols*}{3}
 
-\cheatsheetsection{Lorem ipsum dolor sit amet}
+\cheatsheetsection{Processes}
 
+\textbf{Program:} A passive collection of instructions
+
+\textbf{Process:} The abstraction provided by the OS of a running program
+
+\textbf{Machine State:} What a program can read and change when it is running (registers, address spaces, open files, etc.)
+
+\textbf{Creation of A Process by OS:}
+\begin{itemize}
+      \item Load data from disk to memory
+      \item Allocate space for the run-time stack and initialize the stack with arguments (i.e. fill in the parameters for argc and argv)
+      \item Allocate memory for program's heap. Initially small, but OS may grow the heap as needed.
+      \item Setup initial file descriptors (stdin, stdout, stderr).
+      \item Transfer control of the CPU to the newly-created process (i.e. $\operatorname{main}()$ ).
+\end{itemize}
+
+\textbf{Context Switch:} the CPU stops running one process (or thread) and starts running another
+\begin{itemize}
+      \item Process A executes
+      \item Hardware: generates timer interrupt, save \texttt{regs(A)} to kernel stack, move to kernel mode and jump to trap handler
+      \item OS: Handle the trap, call \texttt{switch} routine, save \texttt{regs(A)} $\rightarrow$ \texttt{proc\_t(A)}, restore \texttt{regs(B)} $\leftarrow$ \texttt{proc\_t(B)}, switch to \texttt{k-stack(B)}, return-from-trap (into B)
+      \item Hardware: restore \texttt{regs(B)} from kernel stack, move to user mode and jump to process B
+      \item Process B executes
+\end{itemize}
+
+\cheatsheetsection{CPU Scheduling}
+
+\textbf{Running Time Metrics:}
+\begin{itemize}
+      \item \( T_{\text{turnaround}} = T_{\text{completion}} - T_{\text{arrival}}\)
+      \item \( T_{\text{response}} = T_{\text{first run}} - T_{\text{arrival}}\)
+\end{itemize}
+
+\textbf{FIFO/FCFS}: First Come First Served, nonpreemptive
+
+\textbf{SJF}: Shortest Job First, nonpreemptive
+
+\textbf{STCF}: Shortest Time to Completion First, preemptive. Always run job that will complete the quickest
+
+\textbf{MLFQ}: Multi-Level Feedback Queue, preemptive
 \begin{enumerate}
-  \item Eu \texttt{feugiat pretium --nibh}  ipsum consequat nisl vel pretium
-        lectus
-  \item Diam quis enim lobortis scelerisque \texttt{.fermentum}
-  \item A arcu cursus vitae congue mauris rhoncus aenean. Ut tellus elementum
-        sagittis vitae
+      \item If Priority $(A)>$ Priority $(B)$ then A runs
+      \item If Priority $(A)==$ Priority $(B)$ then A\&B run in RR
+      \item Processes start at top priority
+      \item Once a job uses up its time allotment at a given level (regardless of how many times it has given up the CPU), its priority is reduced
+      \item After some time period S, move all the jobs in the system to the topmost queue.
 \end{enumerate}
 
-\cheatsheetsection{Consectetur adipiscing elit}
+\textbf{Lottery Scheduler:} Randomly selects the next process to run based on ticket probabilities, giving each process CPU time proportional to its number of tickets.
+\begin{itemize}
+      \item Ticket Currency: allows a user to allocate tickets among their running processes.
+      \item Ticket Transfer: allows a process to temporarily hand off its tickets to another Process.
+      \item Ticket Inflation: trusted processes can boost tickets to indicate its need for more CPU time.
+\end{itemize}
 
-Magna etiam tempor orci eu lobortis. Integer malesuada nunc vel risus. Id
-venenatis a condimentum vitae. Et netus et malesuada:
+\textbf{Unfairness Metric:} \( U = \frac{T(_{\text{process1 completion}})}{T(_{\text{process2 completion}})} \)
 
+\textbf{Stride Scheduler}
+\begin{itemize}
+      \item Each process is assigned a stride, which is the inverse proportion to the number of tickets the process has. 
+      \item Every time a process runs, its pass value is incremented by its stride.
+      \item Scheduler selects the process with the smallest pass value.
+\end{itemize}
+
+\textbf{The Linux Completely Fair Scheduler (CFS):}
+\begin{itemize}
+      \item Divide a time length evenly among \( n \) processes. 
+      \item Each process has a \texttt{vruntime} and a \texttt{nice} value.
+      \item The process with the smallest \texttt{vruntime} is selected to run.
+      \item Update \texttt{vruntime} of the running process by \[
+            \texttt{vruntime}_i += \frac{\texttt{weight}_{0}}{\texttt{weight}_{\texttt{nice}_i}} \times \texttt{runtime}_i
+      \]
+      \item Ready jobs' \texttt{vruntime} are kept in a red-black tree.
+      \item When jobs wake up, their \texttt{vruntime} is set to the minimum value in the tree.
+      
+\end{itemize}
+\textbf{The Linux Completely Fair Scheduler (CFS):}
+
+
+\cheatsheetsection{Multi-level Paging}
+A 2-level paging example:
 \begin{lstlisting}
-sus in
-dictumst quisque --sagittis-purus
+      VA = 0x0214  (15 bits -> 5|5|5)
+      +-------------+------------+----------+
+      |DirIdx=0x00  |PTIdx=0x10  |Off=0x14 |
+      +-------------+------------+----------+
+             |
+PDBR=13  -->  Physical Page #13 (Page Directory)
+             |  Read byte 0 = PDE=0x83 
+             v  (V=1, Page Table PFN=0x03)
+          Physical Page #3 (Page Table)
+             |  Read byte 16 = PTE=0x8E 
+             v  (V=1, Data PFN=0x0E)
+          Physical Page #14 (Data Page)
+             |  Offset 0x14
+             v
+    Physical Address = (0x0E<<5) | 0x14 = 0x1D4
+
 \end{lstlisting}
 
-\cheatsheetsection{Sed do eiusmod tempor incididunt ut labore}
-
-Ut tellus elementum sagittis vitae et leo duis ut diam. Faucibus purus in
-massa tempor.
-
-Lectus nulla at volutpat diam:
-
-\begin{enumerate}
-  \item Quam viverra orci sagittis eu volutpat odio facilisis mauris sit.
-  \item In hac habitasse platea dictumst vestibulum rhoncus:\\
-    \texttt{est pellentesque --elit}
-\end{enumerate}
-
-\cheatsheetsection{Ut enim blandit volutpat maecenas}
-
-Venenatis tellus in metus vulputate. Sit amet facilisis magna etiam tempor
-orci eu lobortis elementum:
-
-\begin{lstlisting}
-quam adipiscing
-quam vitae
-\end{lstlisting}
-
-\cheatsheetsection{Tristique nulla aliquet enim tortor}
-
-Augue eget arcu dictum varius duis at consectetur lorem donec. Semper quis
-lectus nulla at volutpat diam ut venenatis tellus:
-
-\begin{enumerate}
-  \item Nulla aliquet porttitor lacus luctus accumsan. Volutpat maecenas
-        volutpat blandit aliquam etiam erat velit scelerisque.
-  \item Elit sed vulputate mi sit amet mauris commodo.
-  \item Ac felis donec et odio pellentesque diam volutpat. Quam viverra orci
-        sagittis eu volutpat odio facilisis mauris sit.
-\end{enumerate}
-
-\cheatsheetsection{In hac habitasse platea dictumst}
-
-Tristique sollicitudin nibh sit amet commodo nulla. Dui ut ornare lectus
-sit amet:
-
-\begin{enumerate}
-  \item Elementum sagittis vitae et leo duis ut diam.
-  \item Pulvinar etiam non quam lacus suspendisse faucibus interdum posuere
-        lorem.
-\end{enumerate}
-
-Aliquam purus sit amet luctus venenatis lectus:
-
-\begin{lstlisting}
-quam adipiscing vitae
-\end{lstlisting}
-
-\cheatsheetsection{Ipsum nunc aliquet}
-
- Tempus egestas sed sed risus pretium quam vulputate. Sed lectus vestibulum
- mattis ullamcorper. Quis ipsum suspendisse ultrices gravida.
-
-Volutpat maecenas volutpat blandit aliquam etiam erat velit scelerisque in:
-
-\begin{enumerate}
-  \item Eget sit amet tellus cras adipiscing enim.
-  \item Eu scelerisque felis
-        \href{mailto://example@example.com}{example@example.com}
-\end{enumerate}
-
-\cheatsheetsection{Enim sed faucibus}
-
-At ultrices mi tempus imperdiet nulla malesuada. Sit amet consectetur
-adipiscing elit pellentesque habitant. Phasellus vestibulum lorem sed risus
-ultricies tristique nulla aliquet.
-
-\begin{lstlisting}
-cras semper auctor
-\end{lstlisting}
-
-\cheatsheetsection{Adipiscing tristique risus nec feugiat}
-
-Neque sodales ut etiam sit amet nisl purus. Ornare lectus sit amet est
-placerat in. Consectetur purus ut faucibus pulvinar elementum integer enim
-neque volutpat:
-
-\begin{lstlisting}
-amet porttitor eget dolor
-\end{lstlisting}
-
-\cheatsheetsection{Sagittis id consectetur purus}
-
-Non consectetur a erat nam at lectus urna.
-
-\begin{enumerate}
-  \item Fringilla phasellus faucibus scelerisque eleifend donec pretium
-        vulputate sapien.
-  \item Non enim praesent elementum facilisis leo.
-  \item Risus quis varius quam quisque. Sed blandit libero volutpat sed cras
-        \texttt{--ornare-arcu}
-\end{enumerate}
-
-Dolor sed viverra ipsum nunc aliquet bibendum. Senectus et netus et malesuada
-fames ac turpis egestas. Pellentesque id nibh tortor id aliquet.
 
 \vfill
 

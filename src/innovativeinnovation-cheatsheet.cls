@@ -42,8 +42,13 @@
 \RequirePackage{listings}
 % Hyperlink
 \RequirePackage{hyperref}
+% Math
+\RequirePackage{amsmath}
 % Paragraph
 \RequirePackage{parskip}
+
+\RequirePackage{tabularx}
+\RequirePackage{booktabs}
 
 %------------------------------------------------------------------------------
 % Colors
@@ -57,7 +62,7 @@
 %------------------------------------------------------------------------------
 \newcommand*{\cheatsheettitle}[1]{\def\@cheatsheettitle{#1}}
 \newcommand*{\cheatsheetsection}[1]{
-  \vspace{3mm}
+  \vspace{2mm}
   \textbf{\Large\color{innoinnored} #1}
 }
 \newcommand*{\cheatsheetfooter}[2]{
@@ -68,21 +73,21 @@
 % Page layout
 %------------------------------------------------------------------------------
 % Page margins
-\geometry{a4paper, landscape, left=7mm, right=7mm, bottom=10mm, top=22mm}
+\geometry{letterpaper, landscape, left=7mm, right=7mm, bottom=10mm, top=7mm}
 % Remove head rule
 \renewcommand{\headrulewidth}{0pt}
 % Clear all header & footer
 \fancyhf{}
 \pagestyle{fancy}
 
-\usetikzlibrary{calc}
-\fancyhead[C]{
-  \begin{tikzpicture}[overlay, remember picture]
-    \fill[innoinnored] (current page.north west) rectangle ($(current page.north east)+(0,-14mm)$);
-    \node[anchor=north west, text=white, font=\Huge, minimum size=15mm, inner xsep=6mm] at (current page.north west) {\@cheatsheettitle};
-    \node[anchor=north east, minimum size=14mm, inner xsep=6mm] at (current page.north east) {\includegraphics[scale=.090]{innovativeinnovation.png}};
-  \end{tikzpicture}
-}
+% \usetikzlibrary{calc}
+% \fancyhead[C]{
+%   \begin{tikzpicture}[overlay, remember picture]
+%     \fill[innoinnored] (current page.north west) rectangle ($(current page.north east)+(0,-14mm)$);
+%     \node[anchor=north west, text=white, font=\Huge, minimum size=15mm, inner xsep=6mm] at (current page.north west) {\@cheatsheettitle};
+%     \node[anchor=north east, minimum size=14mm, inner xsep=6mm] at (current page.north east) {\includegraphics[scale=.090]{innovativeinnovation.png}};
+%   \end{tikzpicture}
+% }
 
 %------------------------------------------------------------------------------
 % Text
@@ -90,9 +95,9 @@
 % Paragraph indentation
 \setlength{\parindent}{0pt}
 % Paragraph
-\setlength{\parskip}{0.75\baselineskip plus 2pt}
+\setlength{\parskip}{0.5\baselineskip plus 1pt}
 % Item indentation
-\setlength\itemindent{25pt}
+\setlength\itemindent{20pt}
 
 %------------------------------------------------------------------------------
 % Multicolumns
