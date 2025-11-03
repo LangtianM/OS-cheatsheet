@@ -241,3 +241,5 @@ TSWLatexianTemp*
 *.spl
 
 src/example.pdf
+
+.DS_Store

@@ -295,17 +295,17 @@ For ARM systems:
       \item \texttt{StoreConditional(*ptr, value)}: if the value of \texttt{ptr} has not changed since the last \texttt{LoadLinked}, then stores the value of \texttt{value} to \texttt{ptr} and returns 1. Otherwise, returns 0.
 \end{itemize}
 
-\textbf{Compare and Swap (CAS):}
+% \textbf{Compare and Swap (CAS):}
 
-\begin{lstlisting}
-int CompareAndSwap(int *addr, int expected, int new) {
-      int actual = *addr;
-      if (actual == expected) {
-            *addr = new;
-      }
-      return actual;
-}
-\end{lstlisting}
+% \begin{lstlisting}
+% int CompareAndSwap(int *addr, int expected, int new) {
+%       int actual = *addr;
+%       if (actual == expected) {
+%             *addr = new;
+%       }
+%       return actual;
+% }
+% \end{lstlisting}
 
 \textbf{Lock Implementation:}
 
@@ -407,6 +407,42 @@ void Zem_post(Zem_t *s) {
       \item \texttt{sem\_post}: If threads are waiting, wake one of them (value stays 0). Otherwise, set value = 1.
 \end{itemize}
 
+\textbf{Producer/Consumer Using Semaphores:}
+\begin{lstlisting}
+sem_t empty, full, mutex;
+void *producer(void *arg) {
+      int i;
+      for(i=0;i<loops;i++) {
+            sem_wait(&empty);
+            sem_wait(&mutex);
+            put(i);
+            sem_post(&mutex);
+            sem_post(&full);
+      }
+}
+
+void *consumer(void *arg) {
+    int i=0;
+    for(i=0;i<loops;i++) {
+        sem_wait(&full);
+        sem_wait(&mutex);
+        int tmp = get();
+        sem_post(&mutex);
+        sem_post(&empty);
+        printf("%d\n",tmp);
+    }
+}
+
+int main(int argc, char *argv[]) {
+    // ...
+    sem_init(&empty, 0, MAX);
+    sem_init(&full, 0, 0);
+    sem_init(&mutex, 0, 1);
+    // ...
+}
+
+\end{lstlisting}
+
 \cheatsheetsection{Concurrency Problems} 
 
 \textbf{Conditions for Deadlock:}
@@ -416,7 +452,8 @@ void Zem_post(Zem_t *s) {
       \item No preemption: Resources cannot be forcibly removed from threads
       \item Circular wait: Circular chain of threads hold resources that other threads are waiting for.
 \end{itemize}
-\textbf{LiveLock:} two threads repeatedly attempt to acquire locks held by each other and repeatedly fail.
+
+\textbf{Prevention Technique: Violating No Preemption}
 \begin{lstlisting}
 top:
     pthread_mutex_lock(L1);
@@ -425,7 +462,17 @@ top:
         goto top;
     }
 \end{lstlisting}
+\textbf{Problem: LiveLock.} Two threads may repeatedly attempt to acquire locks held by each other and repeatedly fail.
 
+% \
+% \begin{lstlisting}
+% top:
+%     pthread_mutex_lock(L1);
+%     if (pthread_mutex_trylock(L2) != 0) {
+%         pthread_mutex_unlock(L1);
+%         goto top;
+%     }
+% \end{lstlisting}
 
 \end{multicols*}
 
