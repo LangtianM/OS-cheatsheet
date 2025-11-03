@@ -1,10 +1,12 @@
 \documentclass[8pt]{innovativeinnovation-cheatsheet}
 
-\cheatsheettitle{Example Cheat Sheet}
+% \cheatsheettitle{Example Cheat Sheet}
 
 \begin{document}
 
 \begin{multicols*}{3}
+
+\cheatsheettitle{Virtualization}
 
 \cheatsheetsection{Processes}
 
@@ -195,8 +197,6 @@
       \item \textbf{Random:} Randomly select a page to replace.
 \end{itemize}
 
-\newpage
-
 \textbf{Clock Algorithm:} Approximating LRU
 \begin{itemize}
       \item Add use bit to PTE, whenever page is referenced, bit set to 1
@@ -260,6 +260,172 @@ PDBR=13  -->  Physical Page #13 (Page Directory)
 \vfill
 
 % \cheatsheetfooter{Innovative Innovation}{https://github.com/innovativeinnovation}
+
+\newpage
+
+\cheatsheettitle{Concurrency}
+
+\cheatsheetsection{Threads and Locks}
+
+\textbf{Threads:} Multiple threads of a process share:
+\begin{itemize}
+      \item Process ID (PID)
+      \item Address Space: Code and Heap
+      \item Open file descriptors
+      \item Current working directory
+      \item User and group IDs
+\end{itemize}
+Each thread has its own:
+\begin{itemize}
+      \item Stack for local variables and return addresses
+      \item Set of registers, including program counter and stack pointer
+      \item Thread ID (TID)
+\end{itemize}
+
+\textbf{Atomic Hardware Operation:}
+
+For x86 systems:
+\begin{itemize}
+      \item \texttt{xchg(dst, src)}: exchanges the value of \texttt{dst} with \texttt{src}. Returns the original value of \texttt{dst}.
+      \item \texttt{CompareAndSwap(dst, expected, new)}: if the value of \texttt{dst} is equal to \texttt{expected}, exchanges the value of \texttt{dst} with \texttt{new}. Returns the original value of \texttt{dst}.
+\end{itemize}
+For ARM systems:
+\begin{itemize}
+      \item \texttt{LoadLinked(*ptr)}: loads \texttt{ptr} and monitors for changes.
+      \item \texttt{StoreConditional(*ptr, value)}: if the value of \texttt{ptr} has not changed since the last \texttt{LoadLinked}, then stores the value of \texttt{value} to \texttt{ptr} and returns 1. Otherwise, returns 0.
+\end{itemize}
+
+\textbf{Compare and Swap (CAS):}
+
+\begin{lstlisting}
+int CompareAndSwap(int *addr, int expected, int new) {
+      int actual = *addr;
+      if (actual == expected) {
+            *addr = new;
+      }
+      return actual;
+}
+\end{lstlisting}
+
+\textbf{Lock Implementation:}
+
+With Atomic Exchange (Xchg):
+\begin{lstlisting}
+typedef struct __lock_t {
+    int flag;
+} lock_t;
+void init(lock_t *lock) {
+    lock->flag = 0;
+}
+void lock(lock_t *lock) {
+    while(Xchg(&lock->flag, 1) == 1) {
+        // spin-wait (do nothing)
+    }
+}
+void unlock(lock_t *lock) {
+    lock->flag = 0;
+}
+\end{lstlisting}
+
+With Compare and Swap (CAS):
+\begin{lstlisting}
+void lock(lock_t *lock) {
+    while (CompareAndSwap(&lock->flag, 0, 1) != 0) {
+        //spin
+    }
+}
+\end{lstlisting}
+
+\cheatsheetsection{Condition Variables and Semaphores}
+
+\textbf{Condition Variables:}
+\texttt{wait(\&c, \&m)}: Wait for condition c to be signaled. It assumes the mutex m is locked when called. The call releases the lock and puts the thread to sleep. 
+
+After another thread calls \texttt{signal(\&c)}, the thread will wake up and re-acquire the lock.
+
+\textbf{Meaning of Signal: }
+\begin{itemize}
+      \item Mesa Semantics: When a thread signals a condition, the waiting thread is only marked as ready to run. 
+      \item Hoare Semantics: When a thread signals a condition variable, it immediately transfers control to a waiting thread.
+\end{itemize}
+\begin{lstlisting}
+//Mesa Semantics
+pthread_mutex_lock(&mutex);
+while (!condition) 
+//The condition might still be false 
+//when the thread wakes up
+    pthread_cond_wait(&cond, &mutex);
+\end{lstlisting}
+
+\textbf{Semaphores:}
+A semaphore is an object with an integer value that can be manipulated with two atomic routines:
+
+\begin{lstlisting}
+int sem_wait(sem_t *s) {
+      // decrement the value of semaphore s by one
+      // wait if value of semaphore s is negative
+}
+int sem_post(sem_t *s) {
+      // increment the value of semaphore s by one
+      // if there are threads waiting, wake one
+}
+\end{lstlisting}
+Zemaphore implementation:
+\begin{lstlisting}
+typedef struct __Zem_t {
+      int value;
+      pthread_cond_t cond;
+      pthread_mutex_t lock;
+} Zem_t;
+
+void Zem_init(Zem_t *s, int value) {
+      s->value = value;
+      Cond_init(&s->cond);
+      Mutex_init(&s->lock);
+}
+
+void Zem_wait(Zem_t *s) {
+    Mutex_lock(&s->lock);
+    while (s->value <= 0)
+        Cond_wait(&s->cond, &s->lock);
+    s->value--;
+    Mutex_unlock(&s->lock);
+}
+
+void Zem_post(Zem_t *s) {
+    Mutex_lock(&s->lock);
+    s->value++;
+    Cond_signal(&s->cond);
+    Mutex_unlock(&s->lock);
+}
+
+\end{lstlisting}
+
+\textbf{Binary Semaphore:} A semaphore that can only be 0 or 1.
+\begin{itemize}
+      \item \texttt{sem\_wait}: If value = 1, set it to 0 and proceed. If value = 0, block until it becomes 1.
+      \item \texttt{sem\_post}: If threads are waiting, wake one of them (value stays 0). Otherwise, set value = 1.
+\end{itemize}
+
+\cheatsheetsection{Concurrency Problems} 
+
+\textbf{Conditions for Deadlock:}
+\begin{itemize}
+      \item Mutual exclusion: Threads claim exclusive control of resources that they require.
+      \item Hold and wait: Threads hold resources while waiting for other resources.
+      \item No preemption: Resources cannot be forcibly removed from threads
+      \item Circular wait: Circular chain of threads hold resources that other threads are waiting for.
+\end{itemize}
+\textbf{LiveLock:} two threads repeatedly attempt to acquire locks held by each other and repeatedly fail.
+\begin{lstlisting}
+top:
+    pthread_mutex_lock(L1);
+    if (pthread_mutex_trylock(L2) != 0) {
+        pthread_mutex_unlock(L1);
+        goto top;
+    }
+\end{lstlisting}
+
 
 \end{multicols*}
 

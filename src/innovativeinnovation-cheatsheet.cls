@@ -57,15 +57,24 @@
 \definecolor{innoinnored}{RGB}{174,0,16}
 \definecolor{innoinnobggray}{RGB}{250,252,253}
 \definecolor{innoinnofggray}{RGB}{214,213,218}
+\definecolor{darkblue}{RGB}{23,73,179}
+\definecolor{skyblue}{RGB}{0,111,255}
 
 %------------------------------------------------------------------------------
 % Commands
 %------------------------------------------------------------------------------
-\newcommand*{\cheatsheettitle}[1]{\def\@cheatsheettitle{#1}}
+% \newcommand*{\cheatsheettitle}[1]{\def\@cheatsheettitle{#1}}
+
+\newcommand*{\cheatsheettitle}[1]{
+  \vspace{5mm}
+  \textbf{\LARGE\color{darkblue} #1}
+}
+
 \newcommand*{\cheatsheetsection}[1]{
   \vspace{2mm}
-  \textbf{\Large\color{innoinnored} #1}
+  \textbf{\Large\color{skyblue} #1}
 }
+
 \newcommand*{\cheatsheetfooter}[2]{
   \small\textit{#1\newline\url{#2}}
 }
@@ -129,6 +138,6 @@
   rulecolor=\color{innoinnofggray},
   basicstyle=\small\ttfamily,
   framesep=2mm,
-  aboveskip=5mm,
+  aboveskip=2mm,
   belowskip=0mm,
 }
