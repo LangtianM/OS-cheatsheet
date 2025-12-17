@@ -474,6 +474,276 @@ top:
 %     }
 % \end{lstlisting}
 
-\end{multicols*}
+\newpage
 
+\cheatsheettitle{Persistence}
+
+\cheatsheetsection{I/O and Disk Devices}
+
+\textbf{Os-Device Communication:}
+\begin{itemize}
+      \item \textbf{Polling:} The OS repeatedly checks the status of an I/O device.
+      \item \textbf{Programmed I/O:} The main CPU controls data movement.
+      \item \textbf{Hardware Interrupts:} The device sends an interrupt to the CPU when it is ready.
+\end{itemize}
+
+\textbf{Methods of I/O interactions:}
+\begin{itemize}
+      \item \textbf{Explicit I/O Instructions:} OS controls register with data, and knows specific port which names the device, issues instruction.
+      \item \textbf{Memory-Mapped I/O:} Device appears as memory location. OS can read/write to it like memory. A \textbf{device driver} is needed for each device, the OS just interacts with the driver.
+\end{itemize}
+
+\textbf{Hard Disk Mechanics:}
+\begin{itemize}
+      \item \textbf{Seek:} The head moves to the correct cylinder.
+      \item \textbf{Rotation:} The platter rotates under the head.
+      \item \textbf{Transfer:} Data is transferred to/from the buffer.
+\end{itemize}
+\textbf{Estimating I/O time:}
+\begin{equation*}
+      T_{\text{I / O}} = T_{\text{seek}} + T_{\text{rotation}} + T_{\text{transfer}}
+\end{equation*}
+\begin{itemize}
+      \item Average seek time: 1/3 of the maximum seek time.
+      \item Average rotation time: 1/2 of the rotation period.
+\end{itemize}
+
+\textbf{I/O Schedulers:}
+\begin{itemize}
+      \item \textbf{SSTF}: always choose the request with the least seek time.
+      \item \textbf{SCAN}: the disk arm sweep back and forth through cylinders.
+      \item \textbf{SPTF}: cylinders rotate in one direction, choose the request for the sector that will pass under the disk head first.
+      \item \textbf{Non-Work-Conserving:} wait for a few milliseconds to let other requests come in.
+\end{itemize}
+
+\cheatsheetsection{File Systems}
+
+\textbf{File APIs:}
+\begin{itemize}
+      \item Path: a string that identifies a file.
+      \item File descriptor: an integer that identifies an open file. Each process has its own file descriptor table managed by the OS.
+      \item Inode number: a unique identifier for a file.
+\end{itemize}
+
+\textbf{Inode:} contains the metadata for a file or directory:
+\begin{itemize}
+      \item type - regular file, directory, etc.
+      \item size - the number of bytes in the file
+      \item blocks - number of blocks allocated to file
+      \item protection information - Who owns the file and who can access it
+      \item time information - last accessed time, creation time, last modified time
+      \item location information - Where data blocks reside on disk
+\end{itemize}
+
+\textbf{Hard Links:} create another name to the same inode number. If an inode has no more references, it is deleted.
+
+\textbf{Symbolic Links:} a file that contains linking information to another file. If the underlying file is deleted, the symbolic link becomes a dangling reference.
+
+\textbf{Superblock:} contains information about the file system:
+\begin{itemize}
+      \item Number of inodes and data blocks.
+      \item Where the inode table begins.
+      \item Magic number indicating the file system type.
+\end{itemize}
+
+\textbf{The Multi-Level Index:}
+\begin{itemize}
+      \item Direct pointer: refers to one disk block that belongs to the file. Inodes often contain 12 direct pointers.
+      \item Indirect pointer: refers to a disk block that contains pointers to other disk blocks.
+\end{itemize}
+The maximum file size with 12 direct pointers and 1 indirect pointer is (12 + 1024) * 4KB = 4414KB.
+Doubly or Triply indirect pointers are used for larger files.
+
+\textbf{Opening, reading, creating and writing a file:} 
+
+\begin{center}
+      \includegraphics[width=0.3\textwidth]{open&read.png}
+\end{center}
+\
+\begin{center}
+      \includegraphics[width=0.3\textwidth]{create&write.png}
+\end{center}
+
+\cheatsheetsection{Fast File Systems}
+
+\textbf{Fast File Systems:} uses per-group super-block, inode bitmap, data bitmap, and data blocks to reduce seek time while large files are spread across multiple blocks. 
+
+\textbf{\texttt{fsck}:} Upon system reboot, run \texttt{fsck} to check for consistency.
+
+\textbf{Journaling:} Before updating the disk, first write down a journal:
+\begin{enumerate}
+      \item Journal write - Write out \texttt{TxB}, \texttt{I[v2]}, \texttt{B[v2]}, and \texttt{Db} , wait for these to complete
+      \item Journal commit - Write out \texttt{TxE}, wait for this to complete, transaction is committed
+      \item Checkpoint - Write the contents of the update to their final on-disk locations
+\end{enumerate}
+
+\textbf{Metadata Journaling:} 
+\begin{enumerate}
+      \item Data write: Write data to final location; wait for completion.
+      \item Journal metadata write: Write the begin block and metadata to log; wait for completion
+      \item Journal commit: Write the transaction cormmit block (containing TxE)
+      \item Checkpoint metadata: Write the contents of the metadata to final locations
+      \item Free: Later, mark the transaction free in journal superblock
+\end{enumerate}
+
+\cheatsheetsection{Log File Systems}
+Use disk purely sequentially.
+
+\textbf{Reading in LFS:}
+\begin{enumerate}
+      \item Read the Checkpoint region.
+      \item Read all imap parts and caches in memory.
+      \item To read a file:
+      \begin{enumerate}
+            \item Look up inode in imap.
+            \item Read the inode.
+            \item Read the data block.
+      \end{enumerate}
+\end{enumerate}
+
+\textbf{Garbage Collection:} Segment Summary is stored at the beginning of a segment, contains reverse pointers to the inodes for every data block in that segment. If the inode no longer points to the data block, then the block is garbage.
+
+\textbf{Crash Recovery:}
+\begin{itemize}
+      \item The pointers to imap pieces are occasionally saved to checkpoint regions.
+      \item LFS has two checkpoints, only overwrite one at a time. The OS can identify the newest checkpoint using checksum or timestamps.
+      \item Upon recovery, the OS read the newest checkpoint to find most of the imap pointers and segment tail, then find rest of the imap pointers by reading past tail.
+\end{itemize}
+
+\newpage
+\cheatsheetsection{SSDs}
+
+\textbf{SSD Operations:} (Each block has multiple pages. )
+\begin{itemize}
+      \item Read a page
+      \item Erase a block
+      \item Program (write) a page
+\end{itemize}
+
+\textbf{Flash Translation Layer (FTL):}
+\begin{itemize}
+      \item Translate reads/writes to logical blocks into reads/erases/programs.
+      \item Reduce write amplification.
+      \item Implement wear leveling to extend the lifespan of the SSD.
+\end{itemize}
+
+\cheatsheetsection{Virtual Machines Monitors}
+
+\textbf{Virtual Machine:}
+\begin{itemize}
+      \item Language-based virtual machine, e.g. Java Virtual Machine.
+      \item Lightweight virtual machines: rely on combination of hardware and software mechanisms to isolate applications, e.g. docker.
+      \item System-level virtual machines: the isolated environment resembles the hardware of a OS.
+      \begin{itemize}
+            \item Machine Simulator: A user-level application providing accurate simulation.
+            \item Hypervisor: Relies upon limited direct execution for maximum efficiency, relying upon traps which are emulated by the hypervisor.
+            \begin{itemize}
+                  \item Bare-metal Hypervisor (type-1): in direct control of all resources of the physical machine.
+                  \item Hosted Hypervisor (type-2): operates as part of or on top of an existing host OS
+            \end{itemize}
+      \end{itemize}
+\end{itemize}
+
+\textbf{Processor Status Word:} consists of the tuple $(M, B, L, PC)$:
+\begin{itemize}
+      \item the execution level $M=\{s, u\}$ (superuser or user mode)
+      \item the segement register ($B,L$); (Segmented Memory Model)
+      \item the current program counter ($PC$), a virtual address
+\end{itemize} 
+
+\textbf{Popek / Goldberg Theorem: }
+A VMM, relying exclusively on direct execution, may be constructed if the set of sensitive instructions for a computer is a subset of the set of privileged instructions.
+\begin{equation*}
+      \{ \text{control-sensitive} \} \cup\{ \text{behavior-sensitive} \} \subseteq\{ \text{privileged} \}
+\end{equation*}
+\begin{itemize}
+      \item control-sensitive: instructions that can update the system state.
+      \item behavior-sensitive: instructions whose behavior depends upon the system state.
+      \item privileged: instructions that can only be executed in supervisor (i.e. kernel) mode and causes a trap when attempted from user mode.
+\end{itemize}
+
+\textbf{Criteria for Virtualization:}
+\begin{itemize}
+      \item Equivalence - The exposed resource is equivalent with the underlying computer.
+      \item Safety - Isolation requires that the virtual machines are isolated from each other as well as from the hypervisor.
+      \item Performance - The virtual system must show at worst a minor decrease in speed.
+\end{itemize}
+
+\cheatsheetsection{Multiprocessor Scheduling:}
+
+\textbf{SQMS}: reuse single processor scheduling by putting all jobs that need to be scheduled into a single queue. 
+\begin{itemize}
+      \item Scalability Issue: many CPUs are accessing a shared data structure so locking can greatly reduce performance
+      \item Cache Affinity Issue: frequently migrate cache data between CPUs.
+\end{itemize}
+
+\textbf{MQMS}: jobs are divided into multiple queues, one for each CPU.
+
+\textbf{Work Stealing:} A source queue that is low on jobs take jobs from the other queue that has heavier jobs.
+
+\textbf{CFS Multiprocessor Features:}
+\begin{itemize}
+      \item Cache usage: when threads wakes up, if the difference of vruntimes is small, then do not preempted.
+      \item load balancing: 
+      \begin{itemize}
+            \item Evens out work on all cores.
+            \item Every 4ms every core tries to steal work from other cores.
+            \item Tries to make balancing occurs within a NUMA node.
+      \end{itemize}
+\end{itemize}
+
+\textbf{ULE Scheduler:}
+\begin{itemize}
+      \item ULE has three queues per core - one for interactive threads, one for batch threads, and one for idle threads. A thread's interactivity is caculated based on the last 5 seconds. Newly created threads inherit from their parent.
+      \item Inside each queue, threads are sorted by priority (a combination of niceness and interactivity penalty for interactive queue, and niceness and runtime for batch queue). Inside of the queues, there is one FIFO per priority.
+      \item When picking next thread, first search interactive queue then batch queue.
+\end{itemize}
+
+\cheatsheetsection{Distributed File Systems}
+
+\textbf{Communication Protocols:}
+\begin{itemize}
+      \item UDP: Unreliable, connectionless, lightweight.
+      \item TCP: Reliable, sequenced.
+\end{itemize}
+
+\textbf{RPC: } create wrappers so calling a function on another machine is like calling a local function.
+
+\textbf{Sun's Network File System (NFS):} fast server crash recovery. The protocol was stateless (the server does not keep track of anything) and each request contains all the information needed. 
+
+\textbf{Idempotent: } the effect of performing the operation multiple times is equivalent to the effect of performing the operation once.
+
+\textbf{Cache Consistenct:} clients' cached data should be consistent with the server's data.
+\begin{itemize}
+      \item Flash-on-close: in NFS, client checks server's file attributes before using cached copy.
+\end{itemize}
+
+\textbf{AFS}: 
+\begin{itemize}
+      \item Used whole-file caching on the local disk of client
+      \item reads and writes are local
+      \item Upon close, if changed, file is flushed to the server
+      \item Subsequent accesses to file, will check if file on server has changed (TestAuth). If not, use local copy.
+      \item Added a callback to reduce the number of TestAuth. Server will notify client if the file has been modified.
+      \item Added file identifier so server only need to walk a path once.
+\end{itemize}
+
+\cheatsheetsection{Security}
+
+\textbf{Security Goals:}
+\begin{itemize}
+      \item Confidentiality - If some piece of information is supposed to be hidden from others, don't allow them to find it out.
+      \item Integrity - If some piece of information or component of a system is supposed to be in a particular state, don't allow an adversary to change it. 
+      \item Availability - If some piece of information or service is supposed to be available for your own or others' use, make sure an attacker cannot prevent its use.
+\end{itemize}
+
+\textbf{Access control:}
+\begin{itemize}
+      \item Access Control Lists: each object has its own ACL of who is allowed to do what with the object.
+      \item Capabilities: the OS maintains a set of capabilities for a process and as the process tries to access an object (e.g. open()), the OS checks that the appropriate capability “unlocks” access to the object.
+      \item Discretionary Access Control: the owning user decides who has access to the object.
+      \item Manatory Access Control: some elements of access are decided by an authority who can override the desires of the owner.
+\end{itemize}
+
+\end{multicols*}
 \end{document}
